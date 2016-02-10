@@ -11,7 +11,10 @@ function ger_pop(text)
 if (Game.prefs.popups) Game.Popup(text);
 		else Game.Notify(text,'','',2);
 }
-
+function g_cps(i)
+{
+	return Game.Objects[i].cps(Game.Objects[i]);
+}
 function to_time(cookies)
 {
 var temp = cookies/(Game.cookiesPs*(1-Game.cpsSucked));
@@ -56,7 +59,7 @@ function auto_buy()
         var name = "";
         for (var i in Game.Objects)
         {
-            var current= Math.max(get_time(-Game.cookies+Game.Objects[i].price),0) + Game.Objects[i].price/Game.Objects[i].cps();
+            var current= Math.max(get_time(-Game.cookies+Game.Objects[i].price),0) + Game.Objects[i].price/g_cps(i);
             //var current =(Game.Objects[i].cps())/Game.Objects[i].price;
             if( current < lowest){
                 lowest = current;
@@ -97,7 +100,7 @@ document.addEventListener('keydown',function(event) {
         var name = " ";
         for (var i in Game.Objects)
         {
-            var current= Math.max(get_time(-Game.cookies+Game.Objects[i].price),0) + Game.Objects[i].price/Game.Objects[i].cps();
+            var current= Math.max(get_time(-Game.cookies+Game.Objects[i].price),0) + Game.Objects[i].price/g_cps(i);
             //var current =(Game.Objects[i].cps())/Game.Objects[i].price;
             if( current < lowest){
                 lowest = current;
@@ -115,7 +118,7 @@ document.addEventListener('keydown',function(event) {
         var name = "";
         for (var i in Game.Objects)
         {
-            var current =(Game.Objects[i].cps())/Game.Objects[i].price;
+            var current =(g_cps(i))/Game.Objects[i].price;
             if( current > highest){
                 if(Game.Objects[i].price>Game.cookies) continue;
                 highest= current;
@@ -141,7 +144,7 @@ document.addEventListener('keydown',function(event) {
         var name = " ";
         for (var i in Game.Objects)
         {
-            var current= Math.max(get_time(-Game.cookies+Game.Objects[i].price),0) + Game.Objects[i].price/Game.Objects[i].cps();
+            var current= Math.max(get_time(-Game.cookies+Game.Objects[i].price),0) + Game.Objects[i].price/g_cps(i);
             //var current =(Game.Objects[i].cps())/Game.Objects[i].price;
             if( current < lowest){
                 lowest = current;
