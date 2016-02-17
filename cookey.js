@@ -208,7 +208,7 @@ document.addEventListener('keydown',function(event) {
     }
     });
 
-var numberFormatters =
+var numberFormatters_German =//german number convention goes -illion -illiarden
 [
 	rawFormatter,
 	formatEveryThirdPower([
