@@ -16,9 +16,9 @@ function to_time(cookies)
 {
 var temp = cookies/(Game.cookiesPs*(1-Game.cpsSucked));
 str =" ";
-if(parseInt(temp/3600) >0)
+if(temp/3600 >=1)
     str+=parseInt(temp/3600)+" h ";
-if(parseInt((temp/60)%60)>0 || str!=" ")
+if(((temp/60)%60)>=1 || str!=" ")
 str += parseInt((temp/60)%60)+ " m " ;
 if(parseInt(temp)%60 > 0 || str!=" ")
 str += parseInt(temp)%60 + " s ";
@@ -236,3 +236,4 @@ var numberFormatters =
 	])
 ];
 Game.Win('Third-party');
+Game.RefreshStore();
