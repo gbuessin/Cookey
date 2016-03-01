@@ -1,19 +1,38 @@
 // ==UserScript==
-// @name        Cookie Information
-// @namespace   cookiclicker
+// @name		Cookie Information
+// @namespace   Myrrhion
 // @description cookiclicker addon script
-// @include     http://orteil.dashnet.org/cookieclicker/
-// @version     1
-// @grant       none
+// @include	 http://orteil.dashnet.org/cookieclicker/
+// @version	 1
+// @grant	   none
 // ==/UserScript==
 
 /** Helper functions */
 
-function ger_pop(text) //asking myself, why didn't orteil do this?
+//asking myself, why didn't orteil do this?
+//edit: just realised why, still gonna use a workaround
+function ger_pop(title,description,detail,quick,pic) 
 {
-if (Game.prefs.popups) Game.Popup(text);
-		else Game.Notify(text,'','',2);
+var description = description||'';
+var quick = quick||3;
+var detail = detail||false;
+var pic= pic||'';
+if (Game.prefs.popups) 
+{
+	var text = title;
+	if(detail)
+		text = title+": "+description;
+	Game.Popup(text);
 }
+else 
+	Game.Notify(title,description,pic,quick);
+}
+
+function bold(text)
+{
+	return '<b>'+text+'</b>';
+}
+
 function g_cps(i)
 {
 	return (typeof(Game.Objects[i].cps)=='function'?Game.Objects[i].cps(Game.Objects[i]):Game.Objects[i].cps);
@@ -24,13 +43,13 @@ function to_time(cookies)
 var temp = cookies/(Game.cookiesPs*(1-Game.cpsSucked));
 str =" ";
 if(temp/3600 >=1)
-    str+=parseInt(temp/3600)+" h ";
+	str+=parseInt(temp/3600)+" h ";
 if(((temp/60)%60)>=1 || str!=" ")
 str += parseInt((temp/60)%60)+ " m " ;
 if(parseInt(temp)%60 > 0 || str!=" ")
 str += parseInt(temp)%60 + " s ";
 if(str==" ")
-str+="now ";
+str+="now";
 return str;
 }
 
@@ -54,9 +73,8 @@ function toggle_cookies()
 {
 safety_on = 1-safety_on;
 var str = ''
-if(safety_on>0) str = 'Safety on';
-else str = 'Safety off';
-ger_pop(str);
+if(safety_on>0) ger_pop('Safety ON','You really should think again, safety sucks',false,3,[10,14]);
+else str = ger_pop('Safety OFF','A wise decision',false,3,[10,14]);
 }
 
 var auto = null;
@@ -76,8 +94,8 @@ function one_grandma_synergy(name)
 function best_building(affordable)
 {
 	var affordable=affordable||0; //Feature requested by [REDACTED]
-    var lowest = Number.MAX_VALUE;
-    var name = "";
+	var lowest = Number.MAX_VALUE;
+	var name = "";
 	var add=0;
 	if (Game.Has('Thousand fingers')) add+=		0.1;
 	if (Game.Has('Million fingers')) add+=		0.5;
@@ -92,10 +110,10 @@ function best_building(affordable)
 	for (var i in Game.Objects) {if (Game.Objects[i].name!='Grandma') num+=Game.Objects[i].amount;}
 
 
-    for (var me in Game.Objects) //goes through the arbitrary list
-    {
+	for (var me in Game.Objects) //goes through the arbitrary list
+	{
 		//Step 1: Calculate how much long it would take until we have enough cookies to buy it (Thanks to the JGU Physics department)
-        var current= Math.max(get_time(-Game.cookies+Game.Objects[me].price),0);
+		var current= Math.max(get_time(-Game.cookies+Game.Objects[me].price),0);
 
 		//Step 2: calculate the increase in CpS this building would bring
 		//Step 2.1: Flat CpS this building would add
@@ -195,13 +213,13 @@ function best_building(affordable)
 		
 		//Step 4: is the current building the most efficient in terms of time till 0 is reached
 		//Extra Step: if you call the function with a true, you will buy the most efficient building you can afford to buy right now
-        if( current < lowest && (!affordable || Game.cookies>Game.Objects[me].price))
+		if( current < lowest && (!affordable || Game.cookies>Game.Objects[me].price))
 		{
-            lowest = current;
-            name = me;
+			lowest = current;
+			name = me;
 		}
-        
-    }
+		
+	}
 	return name;
 }
 
@@ -209,16 +227,16 @@ function best_building(affordable)
 function auto_buy()
 {
 	//get most efficient building
-    name = best_building();
+	name = best_building();
 	//how many cookies are still needed to buy it
-    var needed = -Game.cookies+(Game.cookiesPs*12000*safety_on)+Game.Objects[name].price;
+	var needed = -Game.cookies+(Game.cookiesPs*12000*safety_on)+Game.Objects[name].price;
 	
-    if(needed>0) 
-    {
+	if(needed>0) 
+	{
 		//if you still need to wait, call this function again when you're expected to have enough
-	    auto = setTimeout(function(){auto_buy()}, get_time(needed)*1000);
-    }
-    else
+		auto = setTimeout(function(){auto_buy()}, get_time(needed)*1000);
+	}
+	else
 	{
 		/*
 		if you have enough
@@ -227,7 +245,7 @@ function auto_buy()
 			3) call this function again
 		*/
 		Game.buyMode=1;
-	    Game.Objects[name].buy(1);
+		Game.Objects[name].buy(1);
 		Game.CalculateGains();
 		auto_buy();
 	}
@@ -235,139 +253,136 @@ function auto_buy()
 
 
 
-function minimum(){    
+function minimum(){	
 	var minimum = Number.MAX_VALUE;
 	var w_max = -1;
 		for(var i in Game.wrinklers)
 		{
 		var me = Game.wrinklers[i];
 			if(me.phase==2)
-            {
-                if(me.sucked<minimum)
-                {
-                    minimum=me.sucked;
-                    w_max=i;
-                }
-            }
-        }
+			{
+				if(me.sucked<minimum)
+				{
+					minimum=me.sucked;
+					w_max=i;
+				}
+			}
+		}
 return minimum;}
 
-    
+var safety_text= "<br>But seriously, safety is completely inefficient, trust me";
 document.addEventListener('keydown',function(event) {
-    
-    if (event.keyCode==65)//A (auto)
-    {
-		var pres = Game.HowMuchPrestige(Game.cookiesEarned+Game.cookiesReset);
-		var temp = ((pres+2)*(pres+1)/2 *1e12 - (Game.cookiesEarned+Game.cookiesReset));
-	    ger_pop(to_time(temp)+"until you have "+(Math.floor(pres)+1)+" prestige");
-    }
-    if (event.keyCode==78)//N (next to buy)
-    {
+	
+	if (event.keyCode==78)//N (next to buy)
+	{
 		name = best_building();
-		ger_pop("Should buy next: "+name+" "+to_time(Math.max(-Game.cookies+Game.Objects[name].price,0)));
-    }
-    
-    
+		var needed = -Game.cookies+(Game.cookiesPs*12000*safety_on)+Game.Objects[name].price;
+		ger_pop("Should buy "+bold(name)+" next","In "+to_time(needed)+(safety_on==1?safety_text:""),true,3,Game.GetIcon(name,1));
+	}
+	
+	
 
-    if (event.keyCode==66)//B (buy next best )
-    {
-    name = best_building(); 
-    var lucky = Game.cookies-Game.cookiesPs*12000-Game.Objects[name].price;
-    if(lucky<0 && safety_on>0) 
-    {
-        ger_pop("shouldn't buy "+name+" for "+to_time(-lucky));
-        return;
-    }
-    var count = Game.Objects[name].amount;
-    Game.Objects[name].buy();
-    if(Game.Objects[name].amount == count) ger_pop("Can't buy "+name+" until "+to_time(-(lucky+Game.cookiesPs*12000)));
-    else ger_pop("Bought "+name);
-    }
-    
-        if (event.keyCode==79)//O (optimum cookies)
-    {
-        ger_pop("Optimum Cookies in bank: "+Beautify(Game.cookiesPs*12000)); 
-		//shows the perfect amount of cookies in bank to get the maximum if you get Lucky ;^)
-       
-    }
-    if (event.keyCode==80)//P pop the fattest wrinkler
-    {
-    var max = 0;
-    var w_max = -1;
-        for(var i in Game.wrinklers)
-        {
-        var me = Game.wrinklers[i];
-            if(me.phase==2)
-            {
-                if(me.sucked>max)
-                {
-                    max=me.sucked;
-                    w_max=i;
-                }
-            }
-        }
-        if(w_max ==-1){
-            ger_pop("0 wrinklers ready");
-            return 0;}
-            Game.wrinklers[w_max].hp=0;
-    }
-    if (event.keyCode==83) //S (safe buying)
-    {
-        toggle_cookies()
-    }
-    if(event.keyCode==84) //T (Activates the main feature of the script: the autobuy)
-    {
-    if(auto == null){
-        ger_pop("auto on");
-        auto_buy();
-        }
-    else{
-        clearTimeout(auto);
-        auto = null;
-        ger_pop("auto off");
-    }
-    }
-
-    if (event.keyCode==86)//V (buy next best )
-    {
-        name = best_building(true);
-    	var lucky = Game.cookies-Game.cookiesPs*12000-Game.Objects[name].price;
-   		if(lucky<0 && safety_on>0) 
-    	{
-    	    ger_pop("shouldn't buy "+name+" until "+to_time(-lucky));
-    	    return;
-    	}
-		if(name == "") 
-			{
-				ger_pop("you are poor");
-				return;
-			}
-		var count = Game.Objects[name].amount;
-		Game.Objects[name].buy();
-		if(Game.Objects[name].amount == count) ger_pop("Can't buy "+name);
-		else ger_pop("Bought "+name);
+	if (event.keyCode==66)//B (buy next best )
+	{
+		name = best_building(); 
+		var needed = -Game.cookies+(Game.cookiesPs*12000*safety_on)+Game.Objects[name].price;
+		if(needed>0)
+			ger_pop("Can't buy "+bold(name),"until "+to_time(needed)+(safety_on==1?safety_text:""), true,3,Game.GetIcon(name,1));
+		else 
+		{
+			Game.buyMode=1;
+			Game.Objects[name].buy(1);
+			ger_pop("Bought "+bold(name),'',false,3,Game.GetIcon(name,1));
 		}
-    if (event.keyCode==87)//W (display amount of cookies you gain if you pop all wrinklers)
-    {
-    var sum = 0;
-        for(var i in Game.wrinklers)
-        {
-        var me = Game.wrinklers[i];
-            if(me.phase==2)
-            {
+	}
+	
+	if (event.keyCode==79)//O (optimum cookies)
+	{
+		ger_pop("Optimum Cookies in bank: "+Beautify(Game.cookiesPs*60*15)); 
+		//shows the perfect amount of cookies in bank to get the maximum if you get Lucky ;^)
+	}
+	if (event.keyCode==80)//P pop the fattest wrinkler
+	{
+	var max = 0;
+	var w_max = -1;
+		for(var i in Game.wrinklers)
+		{
+		var me = Game.wrinklers[i];
+			if(me.phase==2)
+			{
+				if(me.sucked>max)
+				{
+					max=me.sucked;
+					w_max=i;
+				}
+			}
+		}
+		if(w_max ==-1){
+			ger_pop("0 wrinklers ready");
+			return 0;}
+			Game.wrinklers[w_max].hp=0;
+	}
+	if (event.keyCode==83) //S (safe buying)
+	{
+		toggle_cookies();
+	}
+	if(event.keyCode==84) //T (Activates the main feature of the script: the autobuy)
+	{
+	if(auto == null){
+		ger_pop("Auto Buy ON");
+		auto_buy();
+		}
+	else{
+		clearTimeout(auto);
+		auto = null;
+		ger_pop("Auto Buy OFF");
+	}
+	}
+
+	if (event.keyCode==86)//V (buy next best )
+	{
+		name = best_building(true);
+		if(!name) 
+		{
+			ger_pop('You are Poor');
+			return;
+		}
+		var needed = -Game.cookies+(Game.cookiesPs*12000*safety_on)+Game.Objects[name].price;
+		if(needed>0)
+			ger_pop("Can't buy "+bold(name),"until "+to_time(needed)+'<br>I suggest not using this function in the future'+(safety_on==1?safety_text:""), true,3,Game.GetIcon(name,1));
+		else 
+		{
+			Game.buyMode=1;
+			Game.Objects[name].buy(1);
+			ger_pop("Bought "+bold(name),'I suggest not using this function in the future',false,3,Game.GetIcon(name,1));
+		}
+
+	}
+
+	if (event.keyCode==87)//W (displays Wrinkler Stats)
+	{
+	var sum = 0;
+	var n = 0;
+	var shiny = false;
+		for(var i in Game.wrinklers)
+		{
+		var me = Game.wrinklers[i];
+			if(me.phase==2)
+			{
 					sucked=me.sucked
 					var toSuck=1.1;
 					if (Game.Has('Sacrilegious corruption')) toSuck*=1.05;
-					if (me.type==1) toSuck*=3;
+					if (me.type==1) {toSuck*=3; shiny=true;}
 					if (Game.Has('Wrinklerspawn')) toSuck*=1.05;
 					sucked*=toSuck;
-                    sum+=sucked;
-            }
-        }
-	ger_pop(Beautify(sum));
+					sum+=sucked;
+					n++;
+			}
+		}
+	ger_pop(n+' Wrinklers Containing '+bold(Beautify(sum)),'Sucking: '+bold(Beautify(Game.cookiesPs*Game.cpsSucked))+' CpS'+(shiny?'<br>including at least 1 shiny':''),true,4,[19,8]);
 	}
 
-    });
+	});
 
 var numberFormatters_German =//german number convention goes -illion -illiarden
 [
