@@ -6,15 +6,19 @@
 // @version     1
 // @grant       none
 // ==/UserScript==
-function ger_pop(text)
+
+/** Helper functions */
+
+function ger_pop(text) //asking myself, why didn't orteil do this?
 {
 if (Game.prefs.popups) Game.Popup(text);
 		else Game.Notify(text,'','',2);
 }
 function g_cps(i)
 {
-	return Game.Objects[i].cps(Game.Objects[i]);
+	return (typeof(Game.Objects[i].cps)=='function'?Game.Objects[i].cps(Game.Objects[i]):Game.Objects[i].cps);
 }
+
 function to_time(cookies)
 {
 var temp = cookies/(Game.cookiesPs*(1-Game.cpsSucked));
@@ -29,13 +33,15 @@ if(str==" ")
 str+="now ";
 return str;
 }
+
 function get_time(cookies)
 {
-return cookies/(Game.cookiesPs*(1-Game.cpsSucked));
+	return cookies/(Game.cookiesPs*(1-Game.cpsSucked));
 }
 var cookieshow = 0;
 var timeshow = 0;
 var safety_on =0;
+
 function toggle_cookies()
 {
 cookieshow = 1-cookieshow;
@@ -52,106 +58,220 @@ if(safety_on>0) str = 'Safety on';
 else str = 'Safety off';
 ger_pop(str);
 }
+
 var auto = null;
+
+/** Buying logic */
+
+function one_grandma_synergy(name)
+{
+	return Game.cookiesPsByType[name]/Game.getGrandmaSynergyUpgradeMultiplier(name)*0.01*(1/(Game.Objects[name].id-1));
+}
+
+/** The Main attraction: Best building function
+*	Unlike many other scripts, the whole logic is stored in this subscript.
+*	It doesn't add a building to check what would increase CpS the most, but uses a moderately complex formula to calculate efficiency.
+*	It calculates, for which building the point where it has paid for itself, is closest to the present 
+*/
+function best_building(affordable)
+{
+	var affordable=affordable||0; //Feature requested by [REDACTED]
+    var lowest = Number.MAX_VALUE;
+    var name = "";
+	var add=0;
+	if (Game.Has('Thousand fingers')) add+=		0.1;
+	if (Game.Has('Million fingers')) add+=		0.5;
+	if (Game.Has('Billion fingers')) add+=		5;
+	if (Game.Has('Trillion fingers')) add+=		50;
+	if (Game.Has('Quadrillion fingers')) add+=	500;
+	if (Game.Has('Quintillion fingers')) add+=	5000;
+	if (Game.Has('Sextillion fingers')) add+=	50000;
+	if (Game.Has('Septillion fingers')) add+=	500000;
+	if (Game.Has('Octillion fingers')) add+=	5000000;
+	var num =0;
+	for (var i in Game.Objects) {if (Game.Objects[i].name!='Grandma') num+=Game.Objects[i].amount;}
+
+
+    for (var me in Game.Objects) //goes through the arbitrary list
+    {
+		//Step 1: Calculate how much long it would take until we have enough cookies to buy it (Thanks to the JGU Physics department)
+        var current= Math.max(get_time(-Game.cookies+Game.Objects[me].price),0);
+
+		//Step 2: calculate the increase in CpS this building would bring
+		//Step 2.1: Flat CpS this building would add
+		cps = g_cps(me);
+
+		//Step 2.2: Calculate the base multiplier for grandmas
+		if (me.name == "Grandma" || me.name == "Portal") 
+		{
+			var mult=1;
+			if (Game.Has('Farmer grandmas')) mult*=2;
+			if (Game.Has('Worker grandmas')) mult*=2;
+			if (Game.Has('Miner grandmas')) mult*=2;
+			if (Game.Has('Cosmic grandmas')) mult*=2;
+			if (Game.Has('Transmuted grandmas')) mult*=2;
+			if (Game.Has('Altered grandmas')) mult*=2;
+			if (Game.Has('Grandmas\' grandmas')) mult*=2;
+			if (Game.Has('Antigrandmas')) mult*=2;
+			if (Game.Has('Rainbow grandmas')) mult*=2;
+			if (Game.Has('Banker grandmas')) mult*=2;
+			if (Game.Has('Priestess grandmas')) mult*=2;
+			if (Game.Has('Witch grandmas')) mult*=2;
+			if (Game.Has('Bingo center/Research facility')) mult*=4;
+			if (Game.Has('Ritual rolling pins')) mult*=2;
+			if (Game.Has('Naughty list')) mult*=2;
+			mult*=Game.GetTieredCpsMult(Game.Objects['Grandma']);
+		}
+
+		//Step 2.3: Grandmas affect every building with the proper upgrades
+		if (me.name == "Grandma")
+		{
+			//Step 2.3.1: add the Grandma synergy boosts to our CpS
+			if(Game.Has("Farmer grandmas"))
+				cps += one_grandma_synergy("Farm");
+			if(Game.Has("Miner grandmas"))
+				cps += one_grandma_synergy("Mine");
+			if(Game.Has("Worker grandmas"))
+				cps += one_grandma_synergy("Factory");
+			if(Game.Has("Banker grandmas"))
+				cps += one_grandma_synergy("Bank");
+			if(Game.Has("Priestess grandmas"))
+				cps += one_grandma_synergy("Temple");
+			if(Game.Has("Witch grandmas"))
+				cps += one_grandma_synergy("Wizard tower");
+			if(Game.Has("Cosmic grandmas"))
+				cps += one_grandma_synergy("Shipment");
+			if(Game.Has("Transmuted grandmas"))
+				cps += one_grandma_synergy("Alchemy lab");
+			if(Game.Has("Altered grandmas"))
+				cps += one_grandma_synergy("Portal");
+			if(Game.Has("Grandmas\' grandmas"))
+				cps += one_grandma_synergy("Time machine");
+			if(Game.Has("Antigrandmas"))
+				cps += one_grandma_synergy("Antimatter condenser");
+			if(Game.Has("Rainbow grandmas"))
+				cps += one_grandma_synergy("Prism");
+
+			//Step 2.3.2: Grandmas affect each other, so add the boost the other grandmas would gain
+			//+2 because of the boost the new grandma will give to the others and because of the bosst it will receive from the others
+			if (Game.Has('One mind'))
+				cps+=(Game.Objects['Grandma'].amount+2)*0.02*mult; 
+			if (Game.Has('Communal brainsweep')) 
+				cps+=(Game.Objects['Grandma'].amount+2)*0.02*mult;
+		} 
+		else if (Game.hasAura('Elder Battalion')) 		//Alt Step 2.3: Elder Battalion Aura, 
+		{
+			cps+=(Game.cookiesPsByType['Grandma']/(1+0.01*num))*0.01;
+		}
+
+
+		//Step 2.4: Add the boost to Grandmas a new Portal brings
+		if (me.name == "Portal" && Game.Has('Elder Pact')) 
+			cps+=Game.Objects['Grandma'].amount*0.05*mult;
+
+		//Step 2.5: With the right upgrades, Cursors gain a boost every for other building
+		if (me.name != "Cursor")
+		{
+			cps += add*Game.Objects['Cursor'].amount;
+		}
+
+		//Step 2.6: Synergies, finding the correct formula to get the right increase was not easy
+		for (var i in me.synergies)
+		{
+			var syn=me.synergies[i];
+			if (Game.Has(syn.name))
+			{
+				if (syn.buildingTie2.name==me.name) 
+					cps+=(Game.cookiesPsByType[syn.buildingTie1.name]/(1+0.05*(syn.buildingTie2.amount)))*0.05;
+				else if (syn.buildingTie1.name==me.name) 
+					cps+=(Game.cookiesPsByType[syn.buildingTie2.name]/(1+0.001*(syn.buildingTie1.amount)))*0.001;
+			}
+		}
+
+		
+
+		//Step 3: Add the time until the boost pays for the current object to the time until we can buy it
+		current += Game.Objects[me].price/cps;
+		
+		//Step 4: is the current building the most efficient in terms of time till 0 is reached
+		//Extra Step: if you call the function with a true, you will buy the most efficient building you can afford to buy right now
+        if( current < lowest && (!affordable || Game.cookies>Game.Objects[me].price))
+		{
+            lowest = current;
+            name = me;
+		}
+        
+    }
+	return name;
+}
+
+//The actual funtion that buys automatically
 function auto_buy()
+{
+	//get most efficient building
+    name = best_building();
+	//how many cookies are still needed to buy it
+    var needed = -Game.cookies+(Game.cookiesPs*12000*safety_on)+Game.Objects[name].price;
+	
+    if(needed>0) 
     {
-        var lowest = Number.MAX_VALUE;
-        var name = "";
-        for (var i in Game.Objects)
-        {
-            var current= Math.max(get_time(-Game.cookies+Game.Objects[i].price),0) + Game.Objects[i].price/g_cps(i);
-            //var current =(Game.Objects[i].cps())/Game.Objects[i].price;
-            if( current < lowest){
-                lowest = current;
-                name = i;
+		//if you still need to wait, call this function again when you're expected to have enough
+	    auto = setTimeout(function(){auto_buy()}, get_time(needed)*1000);
+    }
+    else
+	{
+		/*
+		if you have enough
+			1) buy the building 
+			2) recalculate CpS (important to counter lag when mass buying)
+			3) call this function again
+		*/
+		Game.buyMode=1;
+	    Game.Objects[name].buy(1);
+		Game.CalculateGains();
+		auto_buy();
+	}
+}
+
+
+
+function minimum(){    
+	var minimum = Number.MAX_VALUE;
+	var w_max = -1;
+		for(var i in Game.wrinklers)
+		{
+		var me = Game.wrinklers[i];
+			if(me.phase==2)
+            {
+                if(me.sucked<minimum)
+                {
+                    minimum=me.sucked;
+                    w_max=i;
                 }
-            
+            }
         }
-    var lucky = Game.cookies-Game.cookiesPs*12000-Game.Objects[name].price;
-    if(lucky<0 && safety_on>0) 
-    {
-        ger_pop("shouldn't buy "+name+" until "+to_time(-lucky));
-        auto = setTimeout(function(){auto_buy()},get_time(-lucky)*1000);
-        return;
-    }
-    if(name == "") {ger_pop("you are poor");return;}
-    var count = Game.Objects[name].amount;
-    Game.Objects[name].buy();
-    if(Game.Objects[name].amount == count) 
-    {
-    //ger_pop("Can't buy "+name+" until "+to_time(-(lucky+Game.cookiesPs*12000)));
-    auto = setTimeout(function(){auto_buy()}, get_time(-(lucky+Game.cookiesPs*12000))*1000);
-    }
-    else auto_buy();
-    }
-    
+return minimum;}
+
     
 document.addEventListener('keydown',function(event) {
     
     if (event.keyCode==65)//A (auto)
     {
-    var pres = Game.HowMuchPrestige(Game.cookiesEarned+Game.cookiesReset);
-    var temp = ((pres+2)*(pres+1)/2 *1e12 - (Game.cookiesEarned+Game.cookiesReset));
-    ger_pop(to_time(temp)+"until you have "+(pres+1)+" prestige");
+		var pres = Game.HowMuchPrestige(Game.cookiesEarned+Game.cookiesReset);
+		var temp = ((pres+2)*(pres+1)/2 *1e12 - (Game.cookiesEarned+Game.cookiesReset));
+	    ger_pop(to_time(temp)+"until you have "+(Math.floor(pres)+1)+" prestige");
     }
     if (event.keyCode==78)//N (next to buy)
     {
-       var lowest = Number.MAX_VALUE;
-        var name = " ";
-        for (var i in Game.Objects)
-        {
-            var current= Math.max(get_time(-Game.cookies+Game.Objects[i].price),0) + Game.Objects[i].price/g_cps(i);
-            //var current =(Game.Objects[i].cps())/Game.Objects[i].price;
-            if( current < lowest){
-                lowest = current;
-                name = i;
-                }
-            
-        }
-    ger_pop("Should buy next: "+name+" "+to_time(Math.max(-Game.cookies+Game.Objects[name].price,0)));
+		name = best_building();
+		ger_pop("Should buy next: "+name+" "+to_time(Math.max(-Game.cookies+Game.Objects[name].price,0)));
     }
     
     
-    if (event.keyCode==86)//B (buy next best )
-    {
-        var highest = 0;
-        var name = "";
-        for (var i in Game.Objects)
-        {
-            var current =(g_cps(i))/Game.Objects[i].price;
-            if( current > highest){
-                if(Game.Objects[i].price>Game.cookies) continue;
-                highest= current;
-                name = i;
-                }
-            
-        }
-    var lucky = Game.cookies-Game.cookiesPs*12000-Game.Objects[name].price;
-    if(lucky<0 && safety_on>0) 
-    {
-        ger_pop("shouldn't buy "+name+" until "+to_time(-lucky));
-        return;
-    }
-    if(name == "") {ger_pop("you are poor");return;}
-    var count = Game.Objects[name].amount;
-    Game.Objects[name].buy();
-    if(Game.Objects[name].amount == count) ger_pop("Can't buy "+name);
-    else ger_pop("Bought "+name);
-    }
+
     if (event.keyCode==66)//B (buy next best )
     {
-        var lowest = Number.MAX_VALUE;
-        var name = " ";
-        for (var i in Game.Objects)
-        {
-            var current= Math.max(get_time(-Game.cookies+Game.Objects[i].price),0) + Game.Objects[i].price/g_cps(i);
-            //var current =(Game.Objects[i].cps())/Game.Objects[i].price;
-            if( current < lowest){
-                lowest = current;
-                name = i;
-                }
-            
-        }
+    name = best_building(); 
     var lucky = Game.cookies-Game.cookiesPs*12000-Game.Objects[name].price;
     if(lucky<0 && safety_on>0) 
     {
@@ -164,10 +284,11 @@ document.addEventListener('keydown',function(event) {
     else ger_pop("Bought "+name);
     }
     
-    
-    if (event.keyCode==79)//O (optimum cookies)
+        if (event.keyCode==79)//O (optimum cookies)
     {
-        ger_pop("Optimum Cookies in bank: "+Beautify(Game.cookiesPs*12000)); //shows the perfect amount of cookies in bank to get the maximum if you get Lucky ;^)
+        ger_pop("Optimum Cookies in bank: "+Beautify(Game.cookiesPs*12000)); 
+		//shows the perfect amount of cookies in bank to get the maximum if you get Lucky ;^)
+       
     }
     if (event.keyCode==80)//P pop the fattest wrinkler
     {
@@ -186,7 +307,7 @@ document.addEventListener('keydown',function(event) {
             }
         }
         if(w_max ==-1){
-            ger_pop("nope");
+            ger_pop("0 wrinklers ready");
             return 0;}
             Game.wrinklers[w_max].hp=0;
     }
@@ -194,7 +315,7 @@ document.addEventListener('keydown',function(event) {
     {
         toggle_cookies()
     }
-    if(event.keyCode==84)
+    if(event.keyCode==84) //T (Activates the main feature of the script: the autobuy)
     {
     if(auto == null){
         ger_pop("auto on");
@@ -206,6 +327,46 @@ document.addEventListener('keydown',function(event) {
         ger_pop("auto off");
     }
     }
+
+    if (event.keyCode==86)//V (buy next best )
+    {
+        name = best_building(true);
+    	var lucky = Game.cookies-Game.cookiesPs*12000-Game.Objects[name].price;
+   		if(lucky<0 && safety_on>0) 
+    	{
+    	    ger_pop("shouldn't buy "+name+" until "+to_time(-lucky));
+    	    return;
+    	}
+		if(name == "") 
+			{
+				ger_pop("you are poor");
+				return;
+			}
+		var count = Game.Objects[name].amount;
+		Game.Objects[name].buy();
+		if(Game.Objects[name].amount == count) ger_pop("Can't buy "+name);
+		else ger_pop("Bought "+name);
+		}
+    if (event.keyCode==87)//W (display amount of cookies you gain if you pop all wrinklers)
+    {
+    var sum = 0;
+        for(var i in Game.wrinklers)
+        {
+        var me = Game.wrinklers[i];
+            if(me.phase==2)
+            {
+					sucked=me.sucked
+					var toSuck=1.1;
+					if (Game.Has('Sacrilegious corruption')) toSuck*=1.05;
+					if (me.type==1) toSuck*=3;
+					if (Game.Has('Wrinklerspawn')) toSuck*=1.05;
+					sucked*=toSuck;
+                    sum+=sucked;
+            }
+        }
+	ger_pop(Beautify(sum));
+	}
+
     });
 
 var numberFormatters_German =//german number convention goes -illion -illiarden
