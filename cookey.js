@@ -379,7 +379,7 @@ document.addEventListener('keydown',function(event) {
 					n++;
 			}
 		}
-	ger_pop(n+' Wrinklers Containing '+bold(Beautify(sum)),'Sucking: '+bold(Beautify(Game.cookiesPs*Game.cpsSucked))+' CpS'+(shiny?'<br>including at least 1 shiny':''),true,4,[19,8]);
+	ger_pop(n+' Wrinklers Containing '+bold(Beautify(sum))+' cookies','Sucking: '+bold(Beautify(Game.cookiesPs*Game.cpsSucked))+' CpS'+(shiny?'<br>including at least 1 shiny':''),true,4,[19,8]);
 	}
 
 	});
